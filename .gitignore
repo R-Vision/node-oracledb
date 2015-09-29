@@ -4,6 +4,7 @@
 \#*#
 core
 *.tgz
+.idea
 
 # Node Ignores
 npm-debug.log
