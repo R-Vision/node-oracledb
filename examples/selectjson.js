@@ -46,6 +46,11 @@ oracledb.getConnection(
       return;
     }
 
+    if (connection.oracleServerVersion < 1201000200) {
+      console.error('This example only works with Oracle Database 12.1.0.2 or greater');
+      process.exit(1);
+    }
+
     var data = { "userId": 1, "userName": "Chris", "location": "Australia" };
     var s = JSON.stringify(data);
 
@@ -67,7 +72,7 @@ oracledb.getConnection(
             if (err) {
               console.error(err.message);
             } else {
-              js = JSON.parse(result.rows[0][0]);  // just show first record
+              var js = JSON.parse(result.rows[0][0]);  // just show first record
               console.log('Query results: ', js);
             }
             doRelease(connection);

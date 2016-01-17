@@ -1,5 +1,44 @@
 # Change Log
 
+## node-oracledb v1.5.0 (21 Dec 2015)
+
+- Treat Oracle Database 'Success With Info' warnings as success.
+
+- Extend rollback-on-connection-release with 11g Oracle Clients to occur for all non-query executions. (Not needed with 12c clients).
+
+- Updated OS X install instructions to work on El Capitan.
+
+- Display an error and prevent connection release while database calls are in progress.
+
+- Fixed intermittent crash while selecting data from CLOB column.
+
+- Fixed crash when trying to set invalid values for connection properties.
+
+## node-oracledb v1.4.0 (17 Nov 2015)
+
+- Upgraded NAN dependency to version 2 allowing node-oracledb to build 
+  with Node 0.10, 0.12, 4 and 5.  Note: a compiler supporting C++11 is required to build with Node 4.2 and 5.
+
+- Fixed a cursor leak when statement execution fails.
+
+- Fixed a crash when accessing Pool properties on Windows.
+
+- Added a run-script 'testWindows' target for Windows testing. See [test/README.md](test/README.md)
+
+- Fixed compilation warnings with recent compilers.
+
+## node-oracledb v1.3.0 (15 Oct 2015)
+
+- Added a `oracledb.oracleClientVersion` property giving the version of the Oracle
+  client library, and a `connection.oracleServerVersion` property giving the Oracle
+  Database version.
+
+- Fixed `result.outBinds` corruption after PL/SQL execution.
+
+- Fixed null output from DML RETURNING with Oracle Database 11.2 when the string is of size 4000.
+
+- Fixed default bind direction to be `BIND_IN`.
+
 ## node-oracledb v1.2.0 (25 Sep 2015)
 
 - Added support for RAW data type.
