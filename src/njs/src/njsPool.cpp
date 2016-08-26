@@ -1,4 +1,4 @@
-/* Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved. */
+/* Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved. */
 
 /******************************************************************************
  *
@@ -18,9 +18,9 @@
  * This file uses NAN:
  *
  * Copyright (c) 2015 NAN contributors
- * 
+ *
  * NAN contributors listed at https://github.com/rvagg/nan#contributors
- * 
+ *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
  * "Software"), to deal in the Software without restriction, including
@@ -28,10 +28,10 @@
  * distribute, sublicense, and/or sell copies of the Software, and to
  * permit persons to whom the Software is furnished to do so, subject to
  * the following conditions:
- * 
+ *
  * The above copyright notice and this permission notice shall be
  * included in all copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
  * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
@@ -39,7 +39,7 @@
  * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- * 
+ *
  * NAME
  *   njsPool.cpp
  *
@@ -74,17 +74,19 @@ Pool::~Pool(){}
 void Pool::setPool( dpi::SPool *dpipool, Oracledb* oracledb, unsigned int poolMax,
                     unsigned int poolMin, unsigned int poolIncrement,
                     unsigned int poolTimeout, unsigned stmtCacheSize,
-                    unsigned int lobPrefetchSize)
+                    unsigned int lobPrefetchSize, Local<Object> jsOradb )
 {
-  this->dpipool_       = dpipool;
-  this->isValid_       = true;
-  this->oracledb_      = oracledb;
-  this->poolMax_       = poolMax;
-  this->poolMin_       = poolMin;
-  this->poolIncrement_ = poolIncrement;
-  this->poolTimeout_   = poolTimeout;
-  this->stmtCacheSize_ = stmtCacheSize;
+  this->dpipool_         = dpipool;
+  this->isValid_         = true;
+  this->oracledb_        = oracledb;
+  this->poolMax_         = poolMax;
+  this->poolMin_         = poolMin;
+  this->poolIncrement_   = poolIncrement;
+  this->poolTimeout_     = poolTimeout;
+  this->stmtCacheSize_   = stmtCacheSize;
   this->lobPrefetchSize_ = lobPrefetchSize;
+
+  this->jsParent_.Reset ( jsOradb );
 }
 
 /*****************************************************************************/
@@ -134,7 +136,8 @@ void Pool::Init(Handle<Object> target)
     Pool::SetStmtCacheSize );
 
   poolTemplate_s.Reset( temp );
-  Nan::Set(target, Nan::New<v8::String>("Pool").ToLocalChecked(), temp->GetFunction());
+  Nan::Set(target, Nan::New<v8::String>("Pool").ToLocalChecked(),
+           temp->GetFunction());
 }
 
 /*****************************************************************************/
@@ -159,11 +162,11 @@ NAN_METHOD(Pool::New)
 Local<Primitive> Pool::getPoolProperty(Pool* njsPool, unsigned int poolProperty)
 {
   Nan::EscapableHandleScope scope;
-  
+
   if(!njsPool->isValid_)
   {
     string msg = NJSMessages::getErrorMsg(errInvalidPool);
-    NJS_SET_EXCEPTION(msg.c_str(), (int) msg.length());
+    NJS_SET_EXCEPTION ( msg.c_str() );
     return scope.Escape ( Nan::Undefined() ) ;
   }
   else
@@ -233,7 +236,7 @@ NAN_GETTER(Pool::GetConnectionsOpen)
   if(!njsPool->isValid_)
   {
     string msg = NJSMessages::getErrorMsg(errInvalidPool);
-    NJS_SET_EXCEPTION(msg.c_str(), (int) msg.length());
+    NJS_SET_EXCEPTION ( msg.c_str() );
     info.GetReturnValue().SetUndefined();
     return;
   }
@@ -245,7 +248,7 @@ NAN_GETTER(Pool::GetConnectionsOpen)
   catch(dpi::Exception &e)
   {
     NJS_SET_CONN_ERR_STATUS ( e.errnum(), NULL );
-    NJS_SET_EXCEPTION(e.what(), (int) strlen(e.what()));
+    NJS_SET_EXCEPTION ( e.what() );
   }
   info.GetReturnValue().SetUndefined();
 }
@@ -262,19 +265,19 @@ NAN_GETTER(Pool::GetConnectionsInUse)
   if(!njsPool->isValid_)
   {
     string error = NJSMessages::getErrorMsg ( errInvalidPool );
-    NJS_SET_EXCEPTION(error.c_str(), (int) error.length());
+    NJS_SET_EXCEPTION ( error.c_str() );
     info.GetReturnValue().SetUndefined();
     return;
   }
   try
   {
-    info.GetReturnValue().Set(njsPool->dpipool_->connectionsInUse()); 
+    info.GetReturnValue().Set(njsPool->dpipool_->connectionsInUse());
     return;
   }
   catch(dpi::Exception &e)
   {
     NJS_SET_CONN_ERR_STATUS ( e.errnum(), NULL );
-    NJS_SET_EXCEPTION(e.what(), (int) strlen(e.what()));
+    NJS_SET_EXCEPTION ( e.what() );
   }
   info.GetReturnValue().SetUndefined();
 }
@@ -307,7 +310,7 @@ void Pool::setPoolProperty (Pool* njsPool, string property)
     msg = NJSMessages::getErrorMsg(errInvalidPool);
   else
     msg = NJSMessages::getErrorMsg(errReadOnly, property.c_str());
-  NJS_SET_EXCEPTION(msg.c_str(), (int) msg.length());
+  NJS_SET_EXCEPTION ( msg.c_str() );
 }
 
 /*****************************************************************************/
@@ -395,7 +398,7 @@ NAN_METHOD(Pool::GetConnection)
 
   Pool *njsPool = Nan::ObjectWrap::Unwrap<Pool>(info.Holder());
 
-  poolBaton *connBaton = new poolBaton ( callback );
+  poolBaton *connBaton = new poolBaton ( callback, info.Holder() );
 
   NJS_CHECK_OBJECT_VALID3 ( njsPool, connBaton->error, exitGetConnection);
   NJS_CHECK_NUMBER_OF_ARGS ( connBaton->error, info, 1, 1, exitGetConnection );
@@ -422,11 +425,11 @@ exitGetConnection:
     string error = NJSMessages::getErrorMsg ( errInternalError,
                                               "uv_queue_work",
                                               "GetConnection" );
-    NJS_SET_EXCEPTION(error.c_str(), error.length());
+    NJS_SET_EXCEPTION ( error.c_str() );
   }
 
   info.GetReturnValue().SetUndefined();
-} 
+}
 
 /*****************************************************************************/
 /*
@@ -481,9 +484,10 @@ void Pool::Async_AfterGetConnection(uv_work_t *req)
 
   if(!(connBaton->error).empty())
   {
-    argv[0] = v8::Exception::Error(Nan::New<v8::String>((connBaton->error).c_str()).ToLocalChecked());
+    argv[0] = v8::Exception::Error(
+                     Nan::New<v8::String>(connBaton->error).ToLocalChecked());
     argv[1] = Nan::Undefined();
-  } 
+  }
   else
   {
     argv[0] = Nan::Undefined();
@@ -491,7 +495,8 @@ void Pool::Async_AfterGetConnection(uv_work_t *req)
     Local<Object> connection = lft->GetFunction()-> NewInstance();
     (Nan::ObjectWrap::Unwrap<Connection> (connection))->
                                  setConnection( connBaton->dpiconn,
-                                                connBaton->njspool->oracledb_ );
+                                                connBaton->njspool->oracledb_,
+                                                Nan::New( connBaton->jsPool ) );
     argv[1] = connection;
   }
 
@@ -521,7 +526,7 @@ NAN_METHOD(Pool::Terminate)
 
   Pool *njsPool = Nan::ObjectWrap::Unwrap<Pool>(info.Holder());
 
-  poolBaton *terminateBaton = new poolBaton ( callback );
+  poolBaton *terminateBaton = new poolBaton ( callback, info.Holder() );
 
   NJS_CHECK_OBJECT_VALID3 (njsPool, terminateBaton->error, exitTerminate);
   NJS_CHECK_NUMBER_OF_ARGS ( terminateBaton->error, info, 1, 1, exitTerminate );
@@ -545,7 +550,7 @@ exitTerminate:
     delete terminateBaton;
     string error = NJSMessages::getErrorMsg ( errInternalError,
                                               "uv_queue_work", "Terminate" );
-    NJS_SET_EXCEPTION(error.c_str(), error.length());
+    NJS_SET_EXCEPTION ( error.c_str() );
   }
 
   info.GetReturnValue().SetUndefined();
@@ -599,7 +604,8 @@ void Pool::Async_AfterTerminate(uv_work_t *req)
 
   if(!(terminateBaton->error).empty())
   {
-    argv[0] = v8::Exception::Error(Nan::New<v8::String>((terminateBaton->error).c_str()).ToLocalChecked());
+    argv[0] = v8::Exception::Error(
+                Nan::New<v8::String>(terminateBaton->error).ToLocalChecked());
   }
   else
   {
@@ -608,6 +614,11 @@ void Pool::Async_AfterTerminate(uv_work_t *req)
     terminateBaton-> njspool-> isValid_ = false;
   }
 
+  /*
+   * When we release the iLob, we have to clear the reference of
+   * its parent.
+   */
+  terminateBaton->njspool->jsParent_.Reset ();
   Local<Function> callback = Nan::New<Function>(terminateBaton->cb);
   delete terminateBaton;
   Nan::MakeCallback( Nan::GetCurrentContext()->Global(),

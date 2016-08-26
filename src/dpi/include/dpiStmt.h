@@ -117,6 +117,7 @@ typedef enum
  */
 #if OCI_MAJOR_VERSION >= 12
   #define  DPI_SZ_TYPE         sb8
+  #define  DPI_USZ_TYPE        ub8
   #define  DPI_BUFLEN_TYPE     ub4
   #define  DPIBINDBYPOS    OCIBindByPos2
   #define  DPIBINDBYNAME   OCIBindByName2
@@ -126,6 +127,7 @@ typedef enum
   #define  DPILOBWRITE     OCILobWrite2
 #else
   #define  DPI_SZ_TYPE         sb4
+  #define  DPI_USZ_TYPE        ub4
   #define  DPI_BUFLEN_TYPE     ub2
   #define  DPIBINDBYPOS    OCIBindByPos
   #define  DPIBINDBYNAME   OCIBindByName
@@ -136,15 +138,20 @@ typedef enum
 #endif
 
 
-typedef struct
+typedef struct MetaData
 {
   unsigned char  *colName;       // column name
   unsigned int    colNameLen;    // length of column name
   unsigned short  dbType;        // database server type
   unsigned short  dbSize;        // size at database
-  unsigned int    precision;     // precision
-  char            scale;         // scale
+  short           precision;     // precision
+  signed   char   scale;         // scale, range starts from -127
   unsigned char   isNullable;    // is the column nullable?
+
+  MetaData ()
+    : colName ( NULL ), colNameLen ( 0 ), dbType ( 0 ), dbSize ( 0 ),
+      precision ( 0 ), scale ( 0 ), isNullable ( 0 )
+    {}
 } MetaData;
 
 
@@ -169,7 +176,7 @@ public:
 
   virtual bool        isReturning() = 0 ;
 
-  virtual DPI_SZ_TYPE  rowsAffected() const = 0;
+  virtual DPI_USZ_TYPE rowsAffected () const = 0;
 
   virtual unsigned int numCols() = 0;
 
@@ -195,7 +202,12 @@ public:
 
   virtual void fetch(unsigned int numRows = 1) = 0;
 
-  virtual const MetaData * getMetaData() = 0;
+
+/*
+ * The returned pointer to MetaData struct should not be freed by the caller
+ * since this will be freed as part of StmtImpl::release()
+ */
+  virtual const MetaData * getMetaData( bool extendedMetaData ) = 0;
 
   virtual unsigned int rowsFetched() const = 0;
 

@@ -67,7 +67,7 @@ public:
 
   // Attributes
   virtual DpiStmtType stmtType () const;
-  virtual DPI_SZ_TYPE  rowsAffected () const;
+  virtual DPI_USZ_TYPE  rowsAffected () const;
   virtual unsigned int numCols() ;
   virtual void prefetchRows( unsigned int prefetchRows ) ;
   virtual unsigned int rowsFetched () const ;
@@ -80,7 +80,7 @@ public:
                      unsigned int maxarr_len, unsigned int *curelen,
                      void *data, cbtype cb);
 
-  virtual void bind (const unsigned char *name, int nameLen, 
+  virtual void bind (const unsigned char *name, int nameLen,
                      unsigned int bndpos,
                      unsigned short type, void *buf, DPI_SZ_TYPE bufSize,
                      short *ind, DPI_BUFLEN_TYPE *bufLen,
@@ -94,7 +94,12 @@ public:
                        DPI_SZ_TYPE bufSize, short *ind, DPI_BUFLEN_TYPE *bufLen);
   virtual void fetch (unsigned int numRows = 1);
 
-  virtual const MetaData *getMetaData ();
+
+/*
+ * The returned pointer to MetaData struct should not be freed by the caller
+ * since this will be freed as part of StmtImpl::release()
+ */
+  virtual const MetaData *getMetaData ( bool extendedMetaData );
 
   virtual OCIError *     getError () { return errh_;  }
 

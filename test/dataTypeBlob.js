@@ -1,4 +1,4 @@
-/* Copyright (c) 2015, 2016 Oracle and/or its affiliates. All rights reserved. */
+/* Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved. */
 
 /******************************************************************************
  *
@@ -14,29 +14,29 @@
  *
  * See the License for the specific language governing permissions and
  * limitations under the License.
- * 
- * The node-oracledb test suite uses 'mocha', 'should' and 'async'. 
+ *
+ * The node-oracledb test suite uses 'mocha', 'should' and 'async'.
  * See LICENSE.md for relevant licenses.
  *
  * NAME
  *   41. dataTypeBlob.js
  *
  * DESCRIPTION
- *    Testing Oracle data type support - BLOB. 
- *    This test corresponds to example files: 
+ *    Testing Oracle data type support - BLOB.
+ *    This test corresponds to example files:
  *         blobinsert1.js, blobstream1.js and blobstream2.js
  *    Firstly, Loads an image data and INSERTs it into a BLOB column.
- *    Secondly, SELECTs the BLOB and pipes it to a file, blobstreamout.jpg 
+ *    Secondly, SELECTs the BLOB and pipes it to a file, blobstreamout.jpg
  *    Thirdly, SELECTs the BLOB and compares it with the original image
  *
  * NUMBERING RULE
  *   Test numbers follow this numbering rule:
  *     1  - 20  are reserved for basic functional tests
  *     21 - 50  are reserved for data type supporting tests
- *     51 onwards are for other tests  
- * 
+ *     51 onwards are for other tests
+ *
  *****************************************************************************/
-"use strict" 
+'use strict';
 
 var oracledb = require('oracledb');
 var fs       = require('fs');
@@ -49,25 +49,26 @@ var inFileName = './test/fuzzydinosaur.jpg';  // contains the image to be insert
 var outFileName = './test/blobstreamout.jpg';
 
 describe('41. dataTypeBlob', function() {
-  this.timeout(10000);
-
-  if(dbConfig.externalAuth){
-    var credential = { externalAuth: true, connectString: dbConfig.connectString };
-  } else {
-    var credential = dbConfig;
-  }
+  this.timeout(20000);
 
   var connection = null;
-  var tableName = "oracledb_myblobs";
+  var tableName = "nodb_myblobs";
 
   before('get one connection', function(done) {
-    oracledb.getConnection(credential, function(err, conn) {
-      should.not.exist(err);
-      connection = conn;
-      done();
-    });
+    oracledb.getConnection(
+      {
+        user:          dbConfig.user,
+        password:      dbConfig.password,
+        connectString: dbConfig.connectString
+      },
+      function(err, conn) {
+        should.not.exist(err);
+        connection = conn;
+        done();
+      }
+    );
   })
-  
+
   after('release connection', function(done) {
     connection.release( function(err) {
       should.not.exist(err);
@@ -91,10 +92,10 @@ describe('41. dataTypeBlob', function() {
     })
 
     it('41.1.1 stores BLOB value correctly', function(done) {
-      connection.should.be.ok;
+      connection.should.be.ok();
       async.series([
         function blobinsert1(callback) {
-          
+
           var lobFinishEventFired = false;
           setTimeout( function() {
             lobFinishEventFired.should.equal(true, "lob does not call 'finish' event!")
@@ -102,14 +103,14 @@ describe('41. dataTypeBlob', function() {
           }, 2000);
 
           connection.execute(
-            "INSERT INTO oracledb_myblobs (num, content) VALUES (:n, EMPTY_BLOB()) RETURNING content INTO :lobbv",
+            "INSERT INTO nodb_myblobs (num, content) VALUES (:n, EMPTY_BLOB()) RETURNING content INTO :lobbv",
             { n: 2, lobbv: {type: oracledb.BLOB, dir: oracledb.BIND_OUT} },
             { autoCommit: false },  // a transaction needs to span the INSERT and pipe()
             function(err, result) {
               should.not.exist(err);
               (result.rowsAffected).should.be.exactly(1);
               (result.outBinds.lobbv.length).should.be.exactly(1);
-              
+
               var inStream = fs.createReadStream(inFileName);
               inStream.on('error', function(err) {
                 should.not.exist(err, "inStream.on 'end' event");
@@ -142,7 +143,7 @@ describe('41. dataTypeBlob', function() {
           }, 2000);
 
           connection.execute(
-            "SELECT content FROM oracledb_myblobs WHERE num = :n",
+            "SELECT content FROM nodb_myblobs WHERE num = :n",
             { n: 2 },
             function(err, result) {
               should.not.exist(err);
@@ -164,7 +165,7 @@ describe('41. dataTypeBlob', function() {
               outStream.on('finish', function() {
                 fs.readFile( inFileName, function(err, originalData) {
                   should.not.exist(err);
-                  
+
                   fs.readFile( outFileName, function(err, generatedData) {
                     should.not.exist(err);
                     originalData.should.eql(generatedData);
@@ -187,11 +188,11 @@ describe('41. dataTypeBlob', function() {
           }, 2000);
 
           connection.execute(
-            "SELECT content FROM oracledb_myblobs WHERE num = :n",
+            "SELECT content FROM nodb_myblobs WHERE num = :n",
             { n: 2 },
             function(err, result) {
               should.not.exist(err);
-              
+
               var blob = Buffer(0);
               var blobLength = 0;
               var lob = result.rows[0][0];
@@ -209,12 +210,12 @@ describe('41. dataTypeBlob', function() {
                 blobLength = blobLength + chunk.length;
                 blob = Buffer.concat([blob, chunk], blobLength);
               });
-              
+
               lob.on('end', function() {
                 fs.readFile( inFileName, function(err, data) {
                   should.not.exist(err);
                   lobEndEventFired = true;
-                  
+
                   data.length.should.be.exactly(blob.length);
                   data.should.eql(blob);
                 });
@@ -222,6 +223,12 @@ describe('41. dataTypeBlob', function() {
 
             }
           );
+        },
+        function deleteOutFile(callback) {
+          fs.unlink(outFileName, function(err) {
+            should.not.exist(err);
+            callback();
+          });
         }
       ], done);
     }) // 41.1.1

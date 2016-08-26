@@ -1,4 +1,4 @@
-/* Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved. */
+/* Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved. */
 
 /******************************************************************************
  *
@@ -14,8 +14,8 @@
  *
  * See the License for the specific language governing permissions and
  * limitations under the License.
- * 
- * The node-oracledb test suite uses 'mocha', 'should' and 'async'. 
+ *
+ * The node-oracledb test suite uses 'mocha', 'should' and 'async'.
  * See LICENSE.md for relevant licenses.
  *
  * NAME
@@ -24,13 +24,13 @@
  * DESCRIPTION
  *
  *   Check the types of all the classes we defined.
- * 
+ *
  * NUMBERING RULE
  *   Test numbers follow this numbering rule:
  *     1  - 20  are reserved for basic functional tests
  *     21 - 50  are reserved for data type supporting tests
- *     51 onwards are for other tests  
- * 
+ *     51 onwards are for other tests
+ *
  *****************************************************************************/
 'use strict';
 
@@ -43,11 +43,11 @@ var assist   = require('./dataTypeAssist.js');
 
 describe('61. checkClassesTypes.js', function() {
 
-  if(dbConfig.externalAuth){
-    var credential = { externalAuth: true, connectString: dbConfig.connectString };
-  } else {
-    var credential = dbConfig;
-  }
+  var credentials = {
+                      user: dbConfig.user,
+                      password: dbConfig.password,
+                      connectString: dbConfig.connectString
+                    };
 
   it('61.1 Oracledb class', function() {
     var type = Object.prototype.toString.call(oracledb);
@@ -57,11 +57,11 @@ describe('61. checkClassesTypes.js', function() {
   it('61.2 Connection class', function(done) {
     async.waterfall(
       [
-        function(callback) 
+        function(callback)
         {
-          oracledb.getConnection(credential, callback);
+          oracledb.getConnection(credentials, callback);
         },
-        function(connection, callback) 
+        function(connection, callback)
         {
           var type = Object.prototype.toString.call(connection);
           type.should.eql('[object Connection]');
@@ -72,7 +72,7 @@ describe('61. checkClassesTypes.js', function() {
           connection.release( callback );
         }
       ],
-      function(err) 
+      function(err)
       {
         should.not.exist(err);
         done();
@@ -82,11 +82,11 @@ describe('61. checkClassesTypes.js', function() {
 
   it('61.3 Lob Class', function(done) {
     var connection = null;
-    var clobTableName = "oracledb_myclobs";
-    
+    var clobTableName = "nodb_myclobs";
+
     async.series([
       function getConn(callback) {
-        oracledb.getConnection(credential, function(err, conn) {
+        oracledb.getConnection(credentials, function(err, conn) {
           should.not.exist(err);
           connection = conn;
           callback();
@@ -96,7 +96,7 @@ describe('61. checkClassesTypes.js', function() {
         assist.createTable(connection, clobTableName, callback);
       },
       function insertLobData(callback) {
-        var sqlInsert = "INSERT INTO " + clobTableName + " VALUES (:n, EMPTY_CLOB()) " 
+        var sqlInsert = "INSERT INTO " + clobTableName + " VALUES (:n, EMPTY_CLOB()) "
                         + " RETURNING content INTO :clob";
         var bindVar = { n:1, clob: {type: oracledb.CLOB, dir: oracledb.BIND_OUT} };
         var clobFileName = './test/clobexample.txt';
@@ -140,7 +140,7 @@ describe('61. checkClassesTypes.js', function() {
 
             var type = Object.prototype.toString.call(lob);
             type.should.eql('[object Object]');
-            
+
             callback();
           }
         );
@@ -160,14 +160,14 @@ describe('61. checkClassesTypes.js', function() {
           callback();
         });
       }
-    ], done); 
+    ], done);
   }) // 61.3
 
   it('61.4 Pool Class', function(done) {
     async.waterfall(
       [
         function(callback) {
-          oracledb.createPool(credential, callback);
+          oracledb.createPool(credentials, callback);
         },
         function(pool, callback) {
           var type = Object.prototype.toString.call(pool);
@@ -178,7 +178,7 @@ describe('61. checkClassesTypes.js', function() {
         function(pool, callback) {
           pool.terminate(callback);
         }
-      ], 
+      ],
       function(err) {
         should.not.exist(err);
         done();
@@ -190,7 +190,7 @@ describe('61. checkClassesTypes.js', function() {
     async.waterfall(
       [
         function(callback) {
-          oracledb.getConnection(credential, callback);
+          oracledb.getConnection(credentials, callback);
         },
         function(connection, callback) {
           connection.execute(
@@ -211,7 +211,7 @@ describe('61. checkClassesTypes.js', function() {
         function(connection, callback) {
           connection.release(callback);
         }
-      ], 
+      ],
       function(err) {
         should.not.exist(err);
         done();
@@ -220,4 +220,3 @@ describe('61. checkClassesTypes.js', function() {
   }) // 61.5
 
 })
-
