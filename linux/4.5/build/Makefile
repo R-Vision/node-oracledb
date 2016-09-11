@@ -40,9 +40,9 @@ all_deps :=
 
 
 
-CC.target ?= $(CC)
+CC.target ?= /opt/centos/devtoolset-1.1/root/usr/bin/gcc
 CFLAGS.target ?= $(CPPFLAGS) $(CFLAGS)
-CXX.target ?= $(CXX)
+CXX.target ?= /opt/centos/devtoolset-1.1/root/usr/bin/c++
 CXXFLAGS.target ?= $(CPPFLAGS) $(CXXFLAGS)
 LINK.target ?= $(LINK)
 LDFLAGS.target ?= $(LDFLAGS)
@@ -53,9 +53,9 @@ LINK ?= $(CXX.target)
 
 # TODO(evan): move all cross-compilation logic to gyp-time so we don't need
 # to replicate this environment fallback in make as well.
-CC.host ?= gcc
+CC.host ?= /opt/centos/devtoolset-1.1/root/usr/bin/gcc
 CFLAGS.host ?= $(CPPFLAGS_host) $(CFLAGS_host)
-CXX.host ?= g++
+CXX.host ?= /opt/centos/devtoolset-1.1/root/usr/bin/c++
 CXXFLAGS.host ?= $(CPPFLAGS_host) $(CXXFLAGS_host)
 LINK.host ?= $(CXX.host)
 LDFLAGS.host ?=
