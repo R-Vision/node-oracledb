@@ -12,7 +12,7 @@
     "coverage": "false",
     "debug_devtools": "node",
     "force_dynamic_crt": 0,
-    "gas_version": "2.26",
+    "gas_version": "2.24",
     "host_arch": "x64",
     "icu_data_file": "icudt56l.dat",
     "icu_data_in": "../../deps/icu/source/data/in/icudt56l.dat",
