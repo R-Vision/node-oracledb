@@ -1,4 +1,4 @@
-/* Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved. */
+/* Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved. */
 
 /******************************************************************************
  *
@@ -279,6 +279,7 @@ NAN_METHOD(ResultSet::GetRows)
   Local<Function> callback;
   NJS_GET_CALLBACK ( callback, info );
 
+
   ResultSet *njsResultSet = Nan::ObjectWrap::Unwrap<ResultSet>(info.Holder());
 
   /* If njsResultSet is invalid from JS, then throw an exception */
@@ -353,9 +354,6 @@ void ResultSet::GetRowsCommon(rsBaton *getRowsBaton)
   ebaton->dpiconn            = njsRS->njsconn_->getDpiConn();
   ebaton->numCols            = njsRS->numCols_;
   ebaton->mInfo              = njsRS->mInfo_;
-
-  // No extended Define data yet
-  ebaton->extDefines.resize ( 0 ) ;
 
 exitGetRowsCommon:
   getRowsBaton->req.data  = (void *)getRowsBaton;
@@ -456,6 +454,7 @@ void ResultSet::Async_GetRows(uv_work_t *req)
     for ( unsigned int col = 0 ; col < ebaton->numCols ; col ++ )
     {
       ebaton->extDefines[col] = njsRS->extDefines_[col];
+      RESETEXTDEFINE4NEXTFETCH(ebaton->extDefines[col]);
     }
     Connection::DoFetch(ebaton);
     if ( !ebaton->error.empty () )
@@ -712,6 +711,7 @@ void ResultSet::clearFetchBuffer( unsigned int numRows )
    {
      if ( defineBuffers_[i].dttmarr )
      {
+       /* Date/Timestamp columns */
        defineBuffers_[i].dttmarr->release ();
        defineBuffers_[i].extbuf = NULL;
      }
@@ -719,6 +719,7 @@ void ResultSet::clearFetchBuffer( unsigned int numRows )
                  ( defineBuffers_[i].fetchType == DpiBlob ) ||
                  ( defineBuffers_[i].fetchType == DpiBfile ) )
      {
+       /* Lob columns */
        for (unsigned int j = 0; j < numRows; j++)
        {
          if (((Descriptor **)(defineBuffers_[i].buf))[j])
@@ -728,16 +729,31 @@ void ResultSet::clearFetchBuffer( unsigned int numRows )
          }
        }
      }
+     else if ( ( ( defineBuffers_[i].fetchType == dpi::DpiVarChar ) &&
+                 ( mInfo_[i].dbType == dpi::DpiClob ) ) ||
+               ( ( defineBuffers_[i].fetchType == dpi::DpiRaw ) &&
+                 ( mInfo_[i].dbType == dpi::DpiBlob ) ) )
+     {
+       /* CLOB-as-STRING or BLOB-as-BUFFER case */
+       for ( unsigned int j = 0 ; j < numRows ; j ++ )
+       {
+         if ( ( (char **)defineBuffers_[i].buf)[j] )
+         {
+           free ( ( (char **)defineBuffers_[i].buf)[j] );
+           ( ( char **)defineBuffers_[i].buf)[j] = NULL ;
+         }
+       }
+     }
 
      free(defineBuffers_[i].buf);
      free(defineBuffers_[i].len);
      free(defineBuffers_[i].ind);
 
      if ( extDefines_[i] &&
-          extDefines_[i]->extDefType == NJS_EXTDEFINE_CLOBASSTR )
+          extDefines_[i]->extDefType == NJS_EXTDEFINE_CONVERT_LOB )
      {
-       free ( extDefines_[i]->fields.extClobAsStr.ctx ) ;
-       free ( extDefines_[i]->fields.extClobAsStr.len2 ) ;
+       free ( extDefines_[i]->fields.extConvertLob.ctx ) ;
+       free ( extDefines_[i]->fields.extConvertLob.len2 ) ;
        delete ( extDefines_[i] );
      }
      extDefines_.resize ( 0 ) ;

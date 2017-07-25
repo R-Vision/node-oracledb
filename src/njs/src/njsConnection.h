@@ -1,4 +1,4 @@
-/* Copyright (c) 2015, 2016, Oracle and/or its affiliates.
+/* Copyright (c) 2015, 2017, Oracle and/or its affiliates.
    All rights reserved. */
 
 /******************************************************************************
@@ -66,6 +66,9 @@ using namespace dpi;
 class Connection;
 class ProtoILob;
 
+// Max number of bytes allowed for PLSQL STRING/BUFFER arguments
+#define NJS_THRESHOLD_SIZE_PLSQL_STRING_ARG 32767
+
 // Extended bind type
 typedef enum
 {
@@ -81,7 +84,7 @@ typedef enum
 typedef enum
 {
   NJS_EXTDEFINE_UNDEFINED = 0,                            /* Not defined yet */
-  NJS_EXTDEFINE_CLOBASSTR = 1,       /* Used as part of Fetch Clob As String */
+  NJS_EXTDEFINE_CONVERT_LOB = 1,     /* Used as part of lob As String/buffer */
 } ExtDefineType;
 
 
@@ -235,26 +238,47 @@ typedef struct ExtDefine
   // containter for type specific data
   union
   {
-    // Fields required for Fetch-Clob-As-String case
+    // Fields required for Fetch-Clob-As-String case or Fetch-Blob-As-Buffer
     struct
     {
       void *ctx;                    /* Context pointer used by the call back */
-      DPI_BUFLEN_TYPE cLen;
-      unsigned int    *len2;        /* Length of the buffer */
-    } extClobAsStr ;
+      DPI_BUFLEN_TYPE cLen;         /* cummulative length from each callback */
+      unsigned int    *len2;        /* size of the buffer for each row */
+    } extConvertLob ;
   } fields;
 
   ExtDefine ( ExtDefineType type )
   {
       extDefType = type;
-      if ( type == NJS_EXTDEFINE_CLOBASSTR )
+      if ( type == NJS_EXTDEFINE_CONVERT_LOB )
       {
-        fields.extClobAsStr.ctx = NULL ;
-        fields.extClobAsStr.cLen = 0;
-        fields.extClobAsStr.len2 = NULL;
+        fields.extConvertLob.ctx = NULL ;
+        fields.extConvertLob.cLen = 0;
+        fields.extConvertLob.len2 = NULL;
       }
   }
 } ExtDefine;
+
+
+/*
+ * RESETEXTDEFINE4NEXTFETCH macro resets one field in ExtDefine struct
+ * allowing the struct to be reused for subsequent fetch calls.  The indexing
+ * starts with 0 for every fetch and the callback can be called multiple
+ * times for the same row, based on data-size, a scenario,
+ * where maxSize is set to 1, and using resultSet Interface (or queryStream),
+ * the state of extDefine gets confused without this reset
+ */
+#define RESETEXTDEFINE4NEXTFETCH(extDefine)                             \
+  {                                                                     \
+    if ( extDefine )                                                    \
+    {                                                                   \
+      DpiDefineCallbackCtx *ctx = (DpiDefineCallbackCtx *)              \
+                                  extDefine->fields.extConvertLob.ctx ; \
+      ctx->prevIter = -1;                                               \
+    }                                                                   \
+  }                                                                     \
+
+
 
 
 /**
@@ -318,6 +342,8 @@ typedef struct eBaton
   std::vector<ExtDefine*>   extDefines;
   unsigned int              fetchAsStringTypesCount;
   DataType                  *fetchAsStringTypes;  // Global by type settings
+  unsigned int              fetchAsBufferTypesCount;
+  DataType                  *fetchAsBufferTypes;
   unsigned int              fetchInfoCount;       // Conversion requested count
   FetchInfo                 *fetchInfo;           // Conversion meta data
   Nan::Persistent<Function> cb;
@@ -337,6 +363,7 @@ typedef struct eBaton
              numCols(0), dpistmt(NULL), st(DpiStmtUnknown),
              stmtIsReturning (false), numOutBinds(0), defines(NULL),
              fetchAsStringTypesCount (0), fetchAsStringTypes(NULL),
+             fetchAsBufferTypesCount (0), fetchAsBufferTypes(NULL),
              fetchInfoCount(0), fetchInfo(NULL), counter ( count ),
              extendedMetaData(false), mInfo(NULL), lobInfo(NULL)
   {
@@ -423,10 +450,7 @@ typedef struct eBaton
        }
        persistentRefs.clear ();
      }
-     if( mInfo && !getRS )
-     {
-        delete [] mInfo;
-     }
+
      if ( lobInfo )
      {
        if ( lobInfo->lobLocator )
@@ -462,9 +486,33 @@ typedef struct eBaton
            }
          }
 
-         free(defines[i].buf);
-         free(defines[i].len);
-         free(defines[i].ind);
+         // If Blob data was fetched as Buffer, deallocate each buffer
+         if ( (defines[i].fetchType == dpi::DpiRaw) &&
+              mInfo[i].dbType == dpi::DpiBlob )
+         {
+           for ( unsigned int j = 0 ; j < maxRows ; j ++ )
+           {
+             free ( ((char **)(defines[i].buf))[j] );
+           }
+         }
+
+         /*
+          * Buf and indicator will be allocated in all cases.
+          * len will NOT be allocated for CLOB-as-STRING/BLOB-as-BUFFER
+          * scenarios. For consistency check all fields before deallocating
+          */
+         if ( defines[i].buf )
+         {
+           free(defines[i].buf);
+         }
+         if ( defines[i].len )
+         {
+           free(defines[i].len);
+         }
+         if ( defines[i].ind )
+         {
+           free(defines[i].ind);
+         }
        }
        delete [] defines;
      }
@@ -486,16 +534,20 @@ typedef struct eBaton
          if ( extDefines[i] )
          {
            // Fetch-Clob-As_string case
-           if ( extDefines[i]->extDefType == NJS_EXTDEFINE_CLOBASSTR )
+           if ( extDefines[i]->extDefType == NJS_EXTDEFINE_CONVERT_LOB )
            {
-             free ( extDefines[i]->fields.extClobAsStr.ctx );
-             extDefines[i]->fields.extClobAsStr.ctx = NULL ;
-             free ( extDefines[i]->fields.extClobAsStr.len2 );
-             extDefines[i]->fields.extClobAsStr.len2 = NULL ;
+             free ( extDefines[i]->fields.extConvertLob.ctx );
+             extDefines[i]->fields.extConvertLob.ctx = NULL ;
+             free ( extDefines[i]->fields.extConvertLob.len2 );
+             extDefines[i]->fields.extConvertLob.len2 = NULL ;
              delete extDefines[i];
            }
          }
        }
+     }
+     if( mInfo && !getRS )
+     {
+        delete [] mInfo;
      }
    }
 }eBaton;
@@ -649,24 +701,31 @@ private:
   static v8::Local<v8::Value> GetOutBinds (eBaton* executeBaton);
   static v8::Local<v8::Value> GetOutBindArray (eBaton* executeBaton);
   static v8::Local<v8::Value> GetOutBindObject (eBaton* executeBaton);
-  static v8::Local<v8::Value> GetArrayValue (eBaton *executeBaton,
+  static v8::Local<v8::Value> ToV8ArrayValue (eBaton *executeBaton,
                                               Bind *bind, unsigned long count);
   // to convert DB value to v8::Value
-  static v8::Local<v8::Value> GetValue (eBaton *executeBaton,
+  static v8::Local<v8::Value> ToV8Value (eBaton *executeBaton,
                                          bool isQuery,
                                          unsigned int index,
                                          unsigned int row = 0);
-  // for primitive types (Number, String and Date)
-  static v8::Local<v8::Value> GetValueCommon (eBaton *executeBaton,
-                                         short ind,
-                                         unsigned short type,
-                                         void* val, DPI_BUFLEN_TYPE len);
+
+  static v8::Local<v8::Value> Define2V8Value ( eBaton    *executeBaton,
+                                                   unsigned  int col,
+                                                   unsigned  int row,
+                                                   Define    *define,
+                                                   ExtDefine *extDefine );
+
+  static v8::Local<v8::Value> Bind2V8Value (
+                                             eBaton       *executeBaton,
+                                             Bind         *bind,
+                                             unsigned int row ) ;
+
   // for refcursor
-  static v8::Local<v8::Value> GetValueRefCursor ( eBaton  *executeBaton,
+  static v8::Local<v8::Value> RefCursor2V8Value ( eBaton  *executeBaton,
                                                   Bind    *bind,
                                                   ExtBind *extBinds );
   // for lobs
-  static v8::Local<v8::Value> GetValueLob (eBaton *executeBaton,
+  static v8::Local<v8::Value> Lob2V8Value (eBaton *executeBaton,
                                             Bind *bind);
   static void UpdateDateValue ( eBaton *executeBaton, Bind *bind, unsigned int nRows );
   static void v8Date2OraDate(v8::Local<v8::Value> val, Bind *bind);
@@ -685,8 +744,9 @@ private:
                                void **bufpp, void **alenpp, void **indpp,
                                unsigned short **rcode, unsigned char *piecep );
 
-  static int  cbDynDefine ( void *octxp, unsigned long definePos,
-                            unsigned int iter, unsigned long *prevIter,
+  // Callback used in CLOB-as-STRING/BLOB-as-BUFFER scenarios to dynamically
+  // allocate memory for each row (in chunks) of this column.
+  static int  cbDynDefine ( void *ctx, unsigned int iter,
                             void **bufpp, unsigned int **alenpp,
                             void **indpp, unsigned short **rcodepp );
 
@@ -699,10 +759,13 @@ private:
                                unsigned short **rcode, unsigned char *piecep );
 
   // NewLob Method on Connection class
-  static v8::Local<v8::Value> NewLob( eBaton*   executeBaton,
+   static v8::Local<v8::Value> NewLob( eBaton*   executeBaton,
                                       ProtoILob *protoILob,
                                       bool      isAutoCloseLob = true );
 
+  /*
+   * Inline function to identify v8 type from given v8::value
+   */
   static inline ValueType GetValueType ( v8::Local<v8::Value> v )
   {
     ValueType type = NJS_VALUETYPE_INVALID;
@@ -737,6 +800,46 @@ private:
     }
 
     return type;
+  }
+
+  /*
+   * large-value for PL/SQL procedure use tempLob if underling column type
+   * is LOB, whether to use that feature for this bind or not
+   */
+  static inline bool IsValue2TempLob ( eBaton *executeBaton,
+                                       unsigned int index )
+  {
+    bool ret = false;
+
+    Bind *bind = executeBaton->binds[index];
+
+    if ( !bind->isOut && !bind->isInOut )    // IN Bind case
+    {
+      // for non-NULL values with provided value len > threshold
+      if ( ( * ( bind-> ind ) != -1 )  &&
+           ( * ( bind-> len ) > NJS_THRESHOLD_SIZE_PLSQL_STRING_ARG ) )
+      ret = true;
+    }
+    else if ( bind->isOut && !bind->isInOut )  // OUT Bind case
+    {
+      // Expected size is greater than threshold
+      if ( bind -> maxSize > NJS_THRESHOLD_SIZE_PLSQL_STRING_ARG )
+      {
+        ret = true;
+      }
+    }
+    else if ( bind->isInOut )
+    {
+      // For INOUT bind, either the given value len or expected size is
+      // greater than threshold
+      if ( max ( ( DPI_SZ_TYPE ) *( bind->len ), bind->maxSize ) >
+           NJS_THRESHOLD_SIZE_PLSQL_STRING_ARG )
+      {
+        ret = true;
+      }
+    }
+
+    return ret;
   }
 
 
