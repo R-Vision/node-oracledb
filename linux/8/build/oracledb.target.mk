@@ -41,10 +41,10 @@ INCS_Debug := \
 	-I/root/.node-gyp/8.6.0/src \
 	-I/root/.node-gyp/8.6.0/deps/uv/include \
 	-I/root/.node-gyp/8.6.0/deps/v8/include \
-	-I/root/oracle2/node_modules/oracledb/instantclient/sdk/include \
+	-I/opt/collectorjs/instantclient \
 	-I$(srcdir)/src/dpi/src \
 	-I$(srcdir)/src/dpi/include \
-	-I$(srcdir)/../nan
+	-I$(srcdir)/node_modules/nan
 
 DEFS_Release := \
 	'-DNODE_GYP_MODULE_NAME=oracledb' \
@@ -82,10 +82,10 @@ INCS_Release := \
 	-I/root/.node-gyp/8.6.0/src \
 	-I/root/.node-gyp/8.6.0/deps/uv/include \
 	-I/root/.node-gyp/8.6.0/deps/v8/include \
-	-I/root/oracle2/node_modules/oracledb/instantclient/sdk/include \
+	-I/opt/collectorjs/instantclient \
 	-I$(srcdir)/src/dpi/src \
 	-I$(srcdir)/src/dpi/include \
-	-I$(srcdir)/../nan
+	-I$(srcdir)/node_modules/nan
 
 OBJS := \
 	$(obj).target/$(TARGET)/src/njs/src/njsOracle.o \
@@ -142,7 +142,7 @@ LDFLAGS_Release := \
 
 LIBS := \
 	-lclntsh \
-	-L/root/oracle2/node_modules/oracledb/instantclient/ 
+	-L/opt/collectorjs/instantclient 
 
 $(obj).target/oracledb.node: GYP_LDFLAGS := $(LDFLAGS_$(BUILDTYPE))
 $(obj).target/oracledb.node: LIBS := $(LIBS)

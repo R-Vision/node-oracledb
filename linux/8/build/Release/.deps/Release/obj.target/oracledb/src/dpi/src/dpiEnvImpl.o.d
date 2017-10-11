@@ -1,47 +1,46 @@
-cmd_Release/obj.target/oracledb/src/dpi/src/dpiEnvImpl.o := g++ '-DNODE_GYP_MODULE_NAME=oracledb' '-DUSING_UV_SHARED=1' '-DUSING_V8_SHARED=1' '-DV8_DEPRECATION_WARNINGS=1' '-D_LARGEFILE_SOURCE' '-D_FILE_OFFSET_BITS=64' '-DBUILDING_NODE_EXTENSION' -I/root/.node-gyp/8.6.0/include/node -I/root/.node-gyp/8.6.0/src -I/root/.node-gyp/8.6.0/deps/uv/include -I/root/.node-gyp/8.6.0/deps/v8/include -I/root/oracle2/node_modules/oracledb/instantclient/sdk/include -I../src/dpi/src -I../src/dpi/include -I../../nan  -fPIC -pthread -Wall -Wextra -Wno-unused-parameter -m64 -fexceptions -O3 -fno-omit-frame-pointer -fno-rtti -fno-exceptions -std=gnu++0x -fexceptions -MMD -MF ./Release/.deps/Release/obj.target/oracledb/src/dpi/src/dpiEnvImpl.o.d.raw   -c -o Release/obj.target/oracledb/src/dpi/src/dpiEnvImpl.o ../src/dpi/src/dpiEnvImpl.cpp
+cmd_Release/obj.target/oracledb/src/dpi/src/dpiEnvImpl.o := g++ '-DNODE_GYP_MODULE_NAME=oracledb' '-DUSING_UV_SHARED=1' '-DUSING_V8_SHARED=1' '-DV8_DEPRECATION_WARNINGS=1' '-D_LARGEFILE_SOURCE' '-D_FILE_OFFSET_BITS=64' '-DBUILDING_NODE_EXTENSION' -I/root/.node-gyp/8.6.0/include/node -I/root/.node-gyp/8.6.0/src -I/root/.node-gyp/8.6.0/deps/uv/include -I/root/.node-gyp/8.6.0/deps/v8/include -I/opt/collectorjs/instantclient -I../src/dpi/src -I../src/dpi/include -I../node_modules/nan  -fPIC -pthread -Wall -Wextra -Wno-unused-parameter -m64 -fexceptions -O3 -fno-omit-frame-pointer -fno-rtti -fno-exceptions -std=gnu++0x -fexceptions -MMD -MF ./Release/.deps/Release/obj.target/oracledb/src/dpi/src/dpiEnvImpl.o.d.raw   -c -o Release/obj.target/oracledb/src/dpi/src/dpiEnvImpl.o ../src/dpi/src/dpiEnvImpl.cpp
 Release/obj.target/oracledb/src/dpi/src/dpiEnvImpl.o: \
  ../src/dpi/src/dpiEnvImpl.cpp ../src/dpi/src/dpiEnvImpl.h \
- /root/oracle2/node_modules/oracledb/instantclient/sdk/include/oci.h \
- /root/oracle2/node_modules/oracledb/instantclient/sdk/include/oratypes.h \
- /root/oracle2/node_modules/oracledb/instantclient/sdk/include/ocidfn.h \
- /root/oracle2/node_modules/oracledb/instantclient/sdk/include/oci1.h \
- /root/oracle2/node_modules/oracledb/instantclient/sdk/include/oro.h \
- /root/oracle2/node_modules/oracledb/instantclient/sdk/include/ori.h \
- /root/oracle2/node_modules/oracledb/instantclient/sdk/include/ort.h \
- /root/oracle2/node_modules/oracledb/instantclient/sdk/include/orl.h \
- /root/oracle2/node_modules/oracledb/instantclient/sdk/include/ociextp.h \
- /root/oracle2/node_modules/oracledb/instantclient/sdk/include/ociapr.h \
- /root/oracle2/node_modules/oracledb/instantclient/sdk/include/ociap.h \
- /root/oracle2/node_modules/oracledb/instantclient/sdk/include/nzt.h \
- /root/oracle2/node_modules/oracledb/instantclient/sdk/include/nzerror.h \
- /root/oracle2/node_modules/oracledb/instantclient/sdk/include/ocixmldb.h \
- /root/oracle2/node_modules/oracledb/instantclient/sdk/include/oci8dp.h \
- /root/oracle2/node_modules/oracledb/instantclient/sdk/include/ocixstream.h \
- ../src/dpi/include/dpiEnv.h ../src/dpi/include/dpiCommon.h \
- ../src/dpi/include/dpiPool.h ../src/dpi/include/dpiConn.h \
- ../src/dpi/include/dpiLob.h ../src/dpi/include/dpiStmt.h \
- ../src/dpi/src/dpiPoolImpl.h ../src/dpi/src/dpiConnImpl.h \
- ../src/dpi/src/dpiExceptionImpl.h ../src/dpi/include/dpiException.h \
- ../src/dpi/src/dpiDateTimeArrayImpl.h \
+ /opt/collectorjs/instantclient/oci.h \
+ /opt/collectorjs/instantclient/oratypes.h \
+ /opt/collectorjs/instantclient/ocidfn.h \
+ /opt/collectorjs/instantclient/oci1.h \
+ /opt/collectorjs/instantclient/oro.h \
+ /opt/collectorjs/instantclient/ori.h \
+ /opt/collectorjs/instantclient/ort.h \
+ /opt/collectorjs/instantclient/orl.h \
+ /opt/collectorjs/instantclient/ociextp.h \
+ /opt/collectorjs/instantclient/ociapr.h \
+ /opt/collectorjs/instantclient/ociap.h \
+ /opt/collectorjs/instantclient/nzt.h \
+ /opt/collectorjs/instantclient/nzerror.h \
+ /opt/collectorjs/instantclient/ocixmldb.h \
+ /opt/collectorjs/instantclient/oci8dp.h \
+ /opt/collectorjs/instantclient/ocixstream.h ../src/dpi/include/dpiEnv.h \
+ ../src/dpi/include/dpiCommon.h ../src/dpi/include/dpiPool.h \
+ ../src/dpi/include/dpiConn.h ../src/dpi/include/dpiLob.h \
+ ../src/dpi/include/dpiStmt.h ../src/dpi/src/dpiPoolImpl.h \
+ ../src/dpi/src/dpiConnImpl.h ../src/dpi/src/dpiExceptionImpl.h \
+ ../src/dpi/include/dpiException.h ../src/dpi/src/dpiDateTimeArrayImpl.h \
  ../src/dpi/include/dpiDateTimeArray.h ../src/dpi/src/dpiUtils.h
 ../src/dpi/src/dpiEnvImpl.cpp:
 ../src/dpi/src/dpiEnvImpl.h:
-/root/oracle2/node_modules/oracledb/instantclient/sdk/include/oci.h:
-/root/oracle2/node_modules/oracledb/instantclient/sdk/include/oratypes.h:
-/root/oracle2/node_modules/oracledb/instantclient/sdk/include/ocidfn.h:
-/root/oracle2/node_modules/oracledb/instantclient/sdk/include/oci1.h:
-/root/oracle2/node_modules/oracledb/instantclient/sdk/include/oro.h:
-/root/oracle2/node_modules/oracledb/instantclient/sdk/include/ori.h:
-/root/oracle2/node_modules/oracledb/instantclient/sdk/include/ort.h:
-/root/oracle2/node_modules/oracledb/instantclient/sdk/include/orl.h:
-/root/oracle2/node_modules/oracledb/instantclient/sdk/include/ociextp.h:
-/root/oracle2/node_modules/oracledb/instantclient/sdk/include/ociapr.h:
-/root/oracle2/node_modules/oracledb/instantclient/sdk/include/ociap.h:
-/root/oracle2/node_modules/oracledb/instantclient/sdk/include/nzt.h:
-/root/oracle2/node_modules/oracledb/instantclient/sdk/include/nzerror.h:
-/root/oracle2/node_modules/oracledb/instantclient/sdk/include/ocixmldb.h:
-/root/oracle2/node_modules/oracledb/instantclient/sdk/include/oci8dp.h:
-/root/oracle2/node_modules/oracledb/instantclient/sdk/include/ocixstream.h:
+/opt/collectorjs/instantclient/oci.h:
+/opt/collectorjs/instantclient/oratypes.h:
+/opt/collectorjs/instantclient/ocidfn.h:
+/opt/collectorjs/instantclient/oci1.h:
+/opt/collectorjs/instantclient/oro.h:
+/opt/collectorjs/instantclient/ori.h:
+/opt/collectorjs/instantclient/ort.h:
+/opt/collectorjs/instantclient/orl.h:
+/opt/collectorjs/instantclient/ociextp.h:
+/opt/collectorjs/instantclient/ociapr.h:
+/opt/collectorjs/instantclient/ociap.h:
+/opt/collectorjs/instantclient/nzt.h:
+/opt/collectorjs/instantclient/nzerror.h:
+/opt/collectorjs/instantclient/ocixmldb.h:
+/opt/collectorjs/instantclient/oci8dp.h:
+/opt/collectorjs/instantclient/ocixstream.h:
 ../src/dpi/include/dpiEnv.h:
 ../src/dpi/include/dpiCommon.h:
 ../src/dpi/include/dpiPool.h:
